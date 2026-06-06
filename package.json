@@ -1,0 +1,19 @@
+{
+  "name": "board",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx @tailwindcss/cli -i src/input.css -o src/output.css",
+    "dev": "npx @tailwindcss/cli -i src/input.css -o src/output.css --watch",
+    "serve": "npx concurrently \"npm run dev\" \"npx serve . -l 3000\""
+  },
+  "dependencies": {
+    "tailwindcss": "^4.3.0",
+    "@tailwindcss/cli": "^4.3.0",
+    "daisyui": "^5.5.20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "serve": "^14.2.0"
+  }
+}

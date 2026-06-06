@@ -1,0 +1,33 @@
+<div class="flex flex-col gap-4 w-full max-w-md">
+  <div class="text-sm font-medium">Modals</div>
+  <button class="btn" onclick="document.getElementById('demo-modal').showModal()">Open Modal</button>
+  <dialog id="demo-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Hello!</h3>
+      <p class="py-4">Press ESC or click outside to close.</p>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn">Close</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <div class="text-sm font-medium mt-2">Drawer</div>
+  <div class="drawer">
+    <input id="demo-drawer" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content">
+      <label for="demo-drawer" class="btn btn-primary drawer-button">Open Drawer</label>
+    </div>
+    <div class="drawer-side">
+      <label for="demo-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+      <ul class="menu bg-base-200 text-base-content min-h-full w-80 p-4">
+        <li><a>Sidebar Item 1</a></li>
+        <li><a>Sidebar Item 2</a></li>
+      </ul>
+    </div>
+  </div>
+</div>

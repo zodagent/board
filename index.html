@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Board</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='oklch(0.65 0.19 264)'/%3E%3Crect x='5' y='5' width='9' height='9' rx='2' fill='oklch(0.98 0 0)'/%3E%3Crect x='18' y='5' width='9' height='9' rx='2' fill='oklch(0.98 0 0)'/%3E%3Crect x='5' y='18' width='9' height='9' rx='2' fill='oklch(0.98 0 0)'/%3E%3Crect x='18' y='18' width='9' height='9' rx='2' fill='oklch(0.98 0 0)'/%3E%3C/svg%3E" />
+  <script>
+    (function() {
+      var t = localStorage.getItem('board-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link href="./src/output.css" rel="stylesheet" />
+  <link href="./src/vendors/animate.min.css" rel="stylesheet" />
+  <script src="./src/vendors/lucidicons.js"></script>
+  <script src="./src/vendors/zinc.js"></script>
+  <script src="./src/vendors/zixi.js"></script>
+  <script src="./src/vendors/ztore.js"></script>
+  <script src="./src/vendors/zlog.js"></script>
+  <script src="./src/vendors/ztex.js"></script>
+  <script src="./src/vendors/zcomponents.js"></script>
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+
+    .app { display: grid; grid-template-rows: 48px 20px 1fr; grid-template-columns: 20px 1fr; height: 100vh; }
+
+    .ruler-h canvas, .ruler-v canvas { position: absolute; top: 0; left: 0; }
+
+    .canvas {
+      min-width: 2000px; min-height: 2000px; width: 2000px; height: 2000px; position: relative;
+      background-color: var(--color-base-200);
+      background-image:
+        linear-gradient(color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .canvas.dots { background-image: radial-gradient(circle, color-mix(in oklch, var(--color-base-content) 12%, transparent) 1px, transparent 1px); background-size: 20px 20px; }
+    .canvas.none { background-image: none; }
+
+    .resize-handle {
+      position: absolute; bottom: 0; right: 0; width: 16px; height: 16px; cursor: nwse-resize; opacity: 0; transition: opacity 0.15s;
+    }
+    .resize-handle::after {
+      content: ''; position: absolute; bottom: 3px; right: 3px; width: 8px; height: 8px;
+      border-right: 2px solid var(--color-base-content); border-bottom: 2px solid var(--color-base-content); opacity: 0.4;
+    }
+    z-draggable:hover .resize-handle { opacity: 1; }
+
+    z-draggable {
+      display: block; position: absolute; z-index: 10;
+      border: 1px solid var(--color-base-300); border-radius: 0.75rem;
+      background: var(--color-base-100);
+      box-shadow: 0 4px 12px oklch(0 0 0 / 0.07), 0 1px 3px oklch(0 0 0 / 0.05);
+      overflow: hidden; min-width: 80px; min-height: 40px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    z-draggable:hover { box-shadow: 0 8px 24px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(0 0 0 / 0.06); }
+    z-draggable[dragging="true"] { box-shadow: 0 16px 40px oklch(0 0 0 / 0.16); border-color: var(--color-primary); z-index: 20; }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <div class="col-span-full flex items-center gap-2 px-4 bg-base-100 border-b border-base-300 z-10 h-12">
+      <div class="flex items-center gap-2.5 pr-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary text-primary-content shadow-sm shadow-primary/20">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <span class="text-sm font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Board</span>
+      </div>
+
+      <div class="w-px h-5 bg-base-content/10"></div>
+
+      <div class="flex items-center gap-0.5">
+        <button class="btn btn-ghost btn-xs btn-square" data-canvas="grid" onclick="setCanvas('grid', this)" title="Grid"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
+        <button class="btn btn-ghost btn-xs btn-square" data-canvas="dots" onclick="setCanvas('dots', this)" title="Dots"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg></button>
+        <button class="btn btn-ghost btn-xs btn-square" data-canvas="none" onclick="setCanvas('none', this)" title="None"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg></button>
+      </div>
+
+      <div class="w-px h-5 bg-base-content/10"></div>
+
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-base-content/40">Size</span>
+        <input type="range" min="10" max="40" value="20" class="range range-xs range-primary w-20" oninput="setGridSize(this.value)" />
+        <span id="grid-size-label" class="text-xs tabular-nums font-mono w-5 text-center text-base-content/50">20</span>
+      </div>
+
+      <div class="w-px h-5 bg-base-content/10"></div>
+
+      <div class="flex items-center gap-1.5">
+        <select id="partial-select" class="select select-xs select-ghost" onchange="loadPartial(this.value); this.selectedIndex = 0;">
+          <option value="" disabled selected>Partial...</option>
+        </select>
+        <button class="btn btn-ghost btn-xs btn-square" onclick="clearCanvas()" title="Clear canvas"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+        <button class="btn btn-ghost btn-xs btn-square text-error/60 hover:text-error hover:bg-error/10" onclick="resetAll()" title="Reset everything"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg></button>
+      </div>
+
+      <div class="w-px h-5 bg-base-content/10"></div>
+
+      <div class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-base-content/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <select id="theme-select" class="select select-xs select-ghost" onchange="setTheme(this.value)"></select>
+      </div>
+
+      <div class="flex-1"></div>
+      <span class="text-[11px] tabular-nums font-mono text-base-content/40 px-1 min-w-[60px] text-right" id="cursor-pos">0, 0</span>
+    </div>
+
+    <div class="bg-base-200 border-r border-b border-base-300"></div>
+    <div class="ruler-h bg-base-200 border-b border-base-300 relative overflow-hidden" id="ruler-h"><canvas id="ruler-h-canvas"></canvas></div>
+    <div class="ruler-v bg-base-200 border-r border-base-300 relative overflow-hidden" id="ruler-v"><canvas id="ruler-v-canvas"></canvas></div>
+
+    <div class="overflow-auto relative" id="canvas-wrap">
+      <div id="canvas" class="canvas">
+        <p id="canvas-placeholder" class="text-sm absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-none text-base-content/30">Drop components here</p>
+      </div>
+    </div>
+  </div>
+
+  <template z-component="z-draggable">
+    <div class="group flex items-center justify-between px-3 py-2 border-b border-base-content/5 bg-base-300/50 cursor-grab select-none active:cursor-grabbing backdrop-blur-sm">
+      <span class="flex items-center gap-1.5 text-[11px] font-semibold text-base-content/50 uppercase tracking-wider">
+        <svg class="w-3 h-3 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+        <span z-text="label">Component</span>
+      </span>
+      <button class="btn btn-ghost btn-xs btn-square w-5 h-5 min-h-0 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:bg-error hover:text-error-content text-xs rounded-md" z-on:click="remove">✕</button>
+    </div>
+    <div id="partial-slot" class="p-5"></div>
+    <div class="resize-handle"></div>
+  </template>
+
+  <script>
+    var BASE_GRID = 20;
+
+    window.remove = function() {
+      var el = document.activeElement;
+      while (el && el.tagName !== 'Z-DRAGGABLE') el = el.parentElement;
+      if (el && el._store) {
+        var label = el._store.get('label');
+        el._store.destroy();
+        el.remove();
+        var items = JSON.parse(localStorage.getItem('board-items') || '[]');
+        items = items.filter(function(i) { return i.id !== el.getAttribute('data-board-id'); });
+        localStorage.setItem('board-items', JSON.stringify(items));
+      }
+    };
+
+    function getScale() { return gridSize / BASE_GRID; }
+
+    function applyScale() {
+      var s = getScale();
+      document.querySelectorAll('z-draggable').forEach(function(el) {
+        el.style.transform = 'scale(' + s + ')';
+        el.style.transformOrigin = 'top left';
+      });
+    }
+
+    function saveDraggableState(el) {
+      var s = el._store;
+      if (!s) return;
+      var items = JSON.parse(localStorage.getItem('board-items') || '[]');
+      var id = el.getAttribute('data-board-id');
+      var idx = -1;
+      for (var i = 0; i < items.length; i++) { if (items[i].id === id) { idx = i; break; } }
+      var entry = { id: id, name: s.get('label'), px: s.get('px'), py: s.get('py'), baseW: s.get('baseW'), baseH: s.get('baseH') };
+      if (idx >= 0) items[idx] = entry; else items.push(entry);
+      localStorage.setItem('board-items', JSON.stringify(items));
+    }
+
+    var _draggableId = 0;
+
+    Zinc.component('z-draggable', {
+      props: ['label', 'px', 'py'],
+      initial: { label: 'Component', px: 0, py: 0, dragging: false, offsetX: 0, offsetY: 0, baseW: 360, baseH: 240 },
+
+      init: function() {
+        var self = this;
+        var store = this._store;
+        var wrap = document.getElementById('canvas-wrap');
+        var isRestore = self.hasAttribute('data-restore');
+        var saved = isRestore ? {
+          px: parseInt(self.getAttribute('data-px')) || 0,
+          py: parseInt(self.getAttribute('data-py')) || 0,
+          baseW: parseInt(self.getAttribute('data-w')) || 360,
+          baseH: parseInt(self.getAttribute('data-h')) || 240
+        } : null;
+
+        store.subscribe(function(s) {
+          self.setAttribute('px', s.px);
+          self.setAttribute('py', s.py);
+          self.setAttribute('dragging', s.dragging);
+          self.style.left = s.px + 'px';
+          self.style.top = s.py + 'px';
+          self.style.width = s.baseW + 'px';
+          self.style.height = s.baseH + 'px';
+        });
+
+        if (saved) {
+          store.set({ px: saved.px, py: saved.py, baseW: saved.baseW, baseH: saved.baseH });
+        } else {
+          var cw = store.get('baseW'), ch = store.get('baseH');
+          var gx = Math.round((wrap.scrollLeft + (wrap.clientWidth - cw) / 2) / gridSize) * gridSize;
+          var gy = Math.round((wrap.scrollTop + (wrap.clientHeight - ch) / 2) / gridSize) * gridSize;
+          store.set({ px: Math.max(0, gx), py: Math.max(0, gy) });
+        }
+
+        self.style.transform = 'scale(' + getScale() + ')';
+        self.style.transformOrigin = 'top left';
+
+        saveDraggableState(self);
+
+        var handle = self.querySelector('[class*="cursor-grab"]');
+        handle.addEventListener('mousedown', function(e) {
+          if (e.target.closest('button')) return;
+          e.preventDefault();
+          var rect = self.getBoundingClientRect();
+          var canvasRect = wrap.getBoundingClientRect();
+          store.set({ dragging: true, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
+          function onMove(ev) {
+            if (!store.get('dragging')) return;
+            var nx = Math.round((ev.clientX - canvasRect.left + wrap.scrollLeft - store.get('offsetX')) / gridSize) * gridSize;
+            var ny = Math.round((ev.clientY - canvasRect.top + wrap.scrollTop - store.get('offsetY')) / gridSize) * gridSize;
+            store.set({ px: Math.max(0, nx), py: Math.max(0, ny) });
+          }
+          function onUp() { store.set('dragging', false); saveDraggableState(self); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+
+        self.querySelector('.resize-handle').addEventListener('mousedown', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          var startW = store.get('baseW'), startH = store.get('baseH'), startX = e.clientX, startY = e.clientY;
+          function onMove(ev) {
+            store.set({
+              baseW: Math.max(80, Math.round((startW + (ev.clientX - startX) / getScale()) / gridSize) * gridSize),
+              baseH: Math.max(40, Math.round((startH + (ev.clientY - startY) / getScale()) / gridSize) * gridSize)
+            });
+          }
+          function onUp() { saveDraggableState(self); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+      }
+    });
+
+    function loadPartial(name, saved) {
+      if (!name) return;
+      var canvas = document.getElementById('canvas');
+      var ph = document.getElementById('canvas-placeholder');
+      if (ph) ph.style.display = 'none';
+
+      var comp = document.createElement('z-draggable');
+      var id = saved ? saved.id : 'p-' + (++_draggableId) + '-' + Date.now();
+      comp.setAttribute('data-board-id', id);
+      comp.setAttribute('label', name);
+      if (saved) {
+        comp.setAttribute('data-restore', '1');
+        comp.setAttribute('data-px', saved.px);
+        comp.setAttribute('data-py', saved.py);
+        comp.setAttribute('data-w', saved.baseW);
+        comp.setAttribute('data-h', saved.baseH);
+      }
+      canvas.appendChild(comp);
+
+      var fetcher = document.createElement('div');
+      fetcher.setAttribute('zx-action', './src/partials/' + name + '.html');
+      fetcher.setAttribute('zx-target', '#partial-slot');
+      fetcher.setAttribute('zx-swap', 'beforeend');
+      fetcher.setAttribute('zx-trigger', 'click');
+      fetcher.style.display = 'none';
+      comp.appendChild(fetcher);
+      setTimeout(function() { fetcher.click(); }, 0);
+
+      if (!saved) {
+        var items = JSON.parse(localStorage.getItem('board-items') || '[]');
+        items.push({ id: id, name: name, px: 0, py: 0, baseW: 360, baseH: 240 });
+        localStorage.setItem('board-items', JSON.stringify(items));
+      }
+    }
+
+    function clearCanvas() {
+      document.getElementById('canvas').querySelectorAll('z-draggable').forEach(function(el) {
+        if (el._store) el._store.destroy();
+        el.remove();
+      });
+      var ph = document.getElementById('canvas-placeholder');
+      if (ph) ph.style.display = '';
+      localStorage.removeItem('board-items');
+    }
+
+    function resetAll() {
+      if (!confirm('Reset everything? This will clear all saved state and reload.')) return;
+      localStorage.clear();
+      location.reload();
+    }
+
+    function restorePartials() {
+      var items = JSON.parse(localStorage.getItem('board-items') || '[]');
+      if (!items.length) return;
+      var seen = {};
+      var clean = [];
+      for (var i = 0; i < items.length; i++) {
+        if (!items[i].id || seen[items[i].id]) continue;
+        seen[items[i].id] = true;
+        clean.push(items[i]);
+      }
+      localStorage.setItem('board-items', JSON.stringify(clean));
+      var ph = document.getElementById('canvas-placeholder');
+      if (ph) ph.style.display = 'none';
+      clean.forEach(function(item) { loadPartial(item.name, item); });
+    }
+  </script>
+
+  <script>
+    var gridSize = parseInt(localStorage.getItem('board-grid-size') || '20');
+
+    var THEMES = [
+      'light','dark','cupcake','bumblebee','emerald','corporate','synthwave',
+      'retro','cyberpunk','valentine','halloween','garden','forest','aqua',
+      'lofi','pastel','fantasy','wireframe','black','luxury','dracula','cmyk',
+      'autumn','business','acid','lemonade','night','coffee','winter','dim',
+      'nord','sunset','caramellatte','abyss','silk'
+    ];
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('board-theme', theme);
+      document.getElementById('theme-select').value = theme;
+      requestAnimationFrame(drawRulers);
+    }
+
+    function initThemeDropdown() {
+      var sel = document.getElementById('theme-select');
+      sel.innerHTML = '';
+      THEMES.forEach(function(t) {
+        var o = document.createElement('option');
+        o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1).replace(/-/g, ' ');
+        sel.appendChild(o);
+      });
+      sel.value = localStorage.getItem('board-theme') || 'light';
+    }
+
+    function setCanvas(type, btn) {
+      var el = document.getElementById('canvas');
+      el.classList.remove('dots', 'none');
+      if (type === 'dots') el.classList.add('dots');
+      else if (type === 'none') el.classList.add('none');
+      document.querySelectorAll('[data-canvas]').forEach(function(b) { b.classList.remove('btn-primary'); b.classList.add('btn-ghost'); });
+      if (btn) { btn.classList.remove('btn-ghost'); btn.classList.add('btn-primary'); }
+      localStorage.setItem('board-canvas', type);
+    }
+
+    function setGridSize(v) {
+      gridSize = parseInt(v);
+      document.getElementById('grid-size-label').textContent = v;
+      document.getElementById('canvas').style.backgroundSize = v + 'px ' + v + 'px';
+      localStorage.setItem('board-grid-size', v);
+      applyScale();
+      drawRulers();
+    }
+
+    var KNOWN_PARTIALS = [
+      'alerts','badges','card','carousel-stack','footer','hero','inputs',
+      'loading','menu','modal-drawer','navbar','progress','skeleton',
+      'stats','table','tabs-dropdown','toasts'
+    ];
+
+    function discoverPartials() {
+      var sel = document.getElementById('partial-select');
+      sel.innerHTML = '<option value="" disabled selected>Partial...</option>';
+      fetch('./src/partials/')
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var links = doc.querySelectorAll('a[href$=".html"]');
+          var names = [];
+          links.forEach(function(a) {
+            var href = a.getAttribute('href');
+            if (!href || href === '../') return;
+            var n = href.replace(/^\.\//, '').replace(/\.html$/, '').split('/').pop();
+            if (n && names.indexOf(n) === -1) names.push(n);
+          });
+          if (!names.length) names = KNOWN_PARTIALS.slice();
+          names.sort();
+          names.forEach(function(n) {
+            var o = document.createElement('option');
+            o.value = n; o.textContent = n.charAt(0).toUpperCase() + n.slice(1).replace(/-/g, ' ');
+            sel.appendChild(o);
+          });
+        })
+        .catch(function() {
+          KNOWN_PARTIALS.forEach(function(n) {
+            var o = document.createElement('option');
+            o.value = n; o.textContent = n.charAt(0).toUpperCase() + n.slice(1).replace(/-/g, ' ');
+            sel.appendChild(o);
+          });
+        });
+    }
+
+    function getThemeColor(v) {
+      return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    }
+
+    function drawRulers() {
+      var hC = document.getElementById('ruler-h-canvas');
+      var vC = document.getElementById('ruler-v-canvas');
+      var hW = document.getElementById('ruler-h');
+      var vW = document.getElementById('ruler-v');
+      var sc = document.getElementById('canvas-wrap');
+      var dpr = window.devicePixelRatio || 1;
+      var bc = getThemeColor('--color-base-content');
+      var tC = 'color-mix(in oklch, ' + bc + ' 40%, transparent)';
+      var tc = 'color-mix(in oklch, ' + bc + ' 18%, transparent)';
+      var mc = 'color-mix(in oklch, ' + bc + ' 45%, transparent)';
+
+      var hw = hW.clientWidth, hh = hW.clientHeight;
+      hC.width = hw * dpr; hC.height = hh * dpr;
+      hC.style.width = hw + 'px'; hC.style.height = hh + 'px';
+      var hx = hC.getContext('2d'); hx.scale(dpr, dpr); hx.clearRect(0, 0, hw, hh);
+      hx.font = '9px system-ui, sans-serif'; hx.textAlign = 'center';
+      var so = sc.scrollLeft, ss = Math.floor(so / gridSize) * gridSize;
+      for (var x = ss; x < so + hw + gridSize; x += gridSize) {
+        var px = x - so, mj = x % (gridSize * 5) === 0;
+        hx.strokeStyle = mj ? mc : tc; hx.beginPath();
+        hx.moveTo(px, mj ? 8 : 13); hx.lineTo(px, hh); hx.stroke();
+        if (mj) { hx.fillStyle = tC; hx.fillText(x, px, 7); }
+      }
+
+      var vw = vW.clientWidth, vh = vW.clientHeight;
+      vC.width = vw * dpr; vC.height = vh * dpr;
+      vC.style.width = vw + 'px'; vC.style.height = vh + 'px';
+      var vx = vC.getContext('2d'); vx.scale(dpr, dpr); vx.clearRect(0, 0, vw, vh);
+      vx.font = '9px system-ui, sans-serif'; vx.textAlign = 'right';
+      var vo = sc.scrollTop, vs = Math.floor(vo / gridSize) * gridSize;
+      for (var y = vs; y < vo + vh + gridSize; y += gridSize) {
+        var py = y - vo, mv = y % (gridSize * 5) === 0;
+        vx.strokeStyle = mv ? mc : tc; vx.beginPath();
+        vx.moveTo(mv ? 8 : 13, py); vx.lineTo(vw, py); vx.stroke();
+        if (mv) {
+          vx.save(); vx.fillStyle = tC; vx.translate(7, py);
+          vx.rotate(-Math.PI / 2); vx.textAlign = 'center';
+          vx.fillText(y, 0, 3); vx.restore();
+        }
+      }
+    }
+
+    document.getElementById('canvas').addEventListener('mousemove', function(e) {
+      var r = this.getBoundingClientRect();
+      document.getElementById('cursor-pos').textContent =
+        Math.round(e.clientX - r.left) + ', ' + Math.round(e.clientY - r.top);
+    });
+    document.getElementById('canvas-wrap').addEventListener('scroll', drawRulers);
+    new MutationObserver(function() { requestAnimationFrame(drawRulers); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    initThemeDropdown();
+    var savedCanvas = localStorage.getItem('board-canvas') || 'grid';
+    setCanvas(savedCanvas, document.querySelector('[data-canvas="' + savedCanvas + '"]'));
+    document.getElementById('grid-size-label').textContent = gridSize;
+    document.getElementById('canvas').style.backgroundSize = gridSize + 'px ' + gridSize + 'px';
+    drawRulers();
+    window.addEventListener('resize', drawRulers);
+    discoverPartials();
+    setTimeout(restorePartials, 500);
+  </script>
+</body>
+</html>
