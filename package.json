@@ -5,7 +5,8 @@
   "scripts": {
     "build": "npx @tailwindcss/cli -i src/input.css -o src/output.css",
     "dev": "npx @tailwindcss/cli -i src/input.css -o src/output.css --watch",
-    "serve": "npx concurrently \"npm run dev\" \"npx serve . -l 3000\""
+    "dev:server": "npx concurrently \"npm run dev\" \"npx serve . -l 3000\"",
+    "serve": "npx serve . -l 3000"
   },
   "dependencies": {
     "tailwindcss": "^4.3.0",

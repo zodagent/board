@@ -11,13 +11,14 @@ Canvas-style board surface (infinite grid, ruler, drawing layer) built on the zo
 
 ```sh
 npm install
-npm run dev        # watch Tailwind + serve on :3000
+npm run dev          # watch Tailwind only
+npm run dev:server   # watch Tailwind + serve on :3000
 # or
-npm run build      # one-shot CSS build
-npm run serve      # static serve only
+npm run build        # one-shot CSS build
+npm run serve        # static serve only (no watch)
 ```
 
-`npm run dev` runs Tailwind in watch mode and `serve` concurrently.
+`npm run dev:server` runs Tailwind in watch mode and the static server concurrently.
 
 ## File layout
 
