@@ -184,6 +184,12 @@ window.ztore = (initial = {})=>{
     },
   };
 
+  if (initial.actions) {
+    for (const name in initial.actions) {
+      store[name] = initial.actions[name].bind(store);
+    }
+  }
+
   for (const k in initial) {
     if (typeof initial[k] === 'function') {
       const fn = initial[k];
@@ -198,6 +204,25 @@ window.ztore = (initial = {})=>{
       signals[k]._ef = ef;
     } else {
       signals[k] = signal(initial[k]);
+    }
+  }
+
+  if (initial.zinc) {
+    const origSet = store.set.bind(store);
+    const computedKeys = Object.keys(initial).filter(k => typeof initial[k] === 'function');
+    store.set = function(k, v) {
+      origSet(k, v);
+      if (window.Zinc) {
+        if (typeof k === 'string') Zinc.set(k, store.get(k));
+        else if (typeof k === 'object') for (const p in k) Zinc.set(p, store.get(p));
+        for (const ck of computedKeys) {
+          if (signals[ck]._ef) signals[ck]._ef();
+          Zinc.set(ck, store.get(ck));
+        }
+      }
+    };
+    if (window.Zinc) {
+      for (const k in signals) Zinc.set(k, store.get(k));
     }
   }
 

@@ -17,6 +17,12 @@
     if (el._zOrig == null) el._zOrig = el.style.display || '';
     el.style.display = val ? el._zOrig : 'none';
   };
+  dirs['z-class'] = (el, val) => {
+    if (typeof val !== 'object' || val === null) return;
+    for (const [cls, on] of Object.entries(val)) {
+      el.classList.toggle(cls, !!on);
+    }
+  };
   dirs['z-each'] = (el, arr) => {
     if (!Array.isArray(arr)) arr = [];
     const tpl = el._zTpl || (el._zTpl = el.firstElementChild);
@@ -30,6 +36,10 @@
           if (!na.startsWith('z-')) continue;
           if (na === 'z-ref') { refs[a.value.trim()] = n; continue; }
           const val = item && typeof item === 'object' ? item[a.value.trim()] : item;
+          if (na.startsWith('z-on:')) {
+            if (typeof val === 'function') n.addEventListener(na.slice(5), val);
+            continue;
+          }
           if (na.startsWith('z-bind:')) dirs['z-bind'](n, val, na.slice(7));
           else if (dirs[na]) dirs[na](n, val);
         }
@@ -106,9 +116,16 @@
           const event = name.slice(5);
           n.addEventListener(event, function(e) {
             try {
+              var store = null, el = n;
+              while (el) { if (el._store) { store = el._store; break; } el = el.parentElement; }
               const m = key.match(/^(\w+)\(([^)]*)\)$/);
-              if (m) window[m[1]](...m[2].split(',').map(s => state[s.trim()]));
-              else window[key]();
+              if (m) {
+                const fn = (store && store[m[1]]) || m[1].split('.').reduce((o, k) => o?.[k], window);
+                if (fn) fn(...m[2].split(',').map(s => state[s.trim()]));
+              } else {
+                const fn = (store && store[key]) || key.split('.').reduce((o, k) => o?.[k], window);
+                if (fn) fn();
+              }
             } catch (ex) { console.error('zinc:', ex); }
           });
           continue;
